@@ -48,7 +48,8 @@ otus linux 10-2018 repo
         cd linux-4.19.2
         cp /boot/config* .config && make oldconfig && make && make install && make modules_install
     ```
-- Копируем к себе yum.log (сначала пришлось поднять права 665) и новый конфиг
+- Копируем к себе yum.log (сначала пришлось поднять права 665) и результирующий конфиг
     ```
         scp -i .vagrant/machines/otuslinux/virtualbox/private_key vagrant@192.168.11.101:/var/log/yum.log ./hw-1/
+        scp -i .vagrant/machines/otuslinux/virtualbox/private_key vagrant@192.168.11.101:~/linux-4.19.2/.config ./hw-1/
     ```
