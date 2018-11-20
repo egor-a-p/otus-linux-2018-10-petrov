@@ -1,16 +1,12 @@
 # egor-a-p
 otus linux 10-2018 repo
 
-# Выполнено ДЗ № 1
-
+##  ДЗ 1:
 - ключ лежит в .vagrant/machines/otuslinux/virtualbox/private_key
 - ssh и scp запускать с -i .vagrant/machines/otuslinux/virtualbox/private_key
     ```
         ssh -i .vagrant/machines/otuslinux/virtualbox/private_key vagrant@192.168.11.101
     ```
-
-## Cделано:
-
 - Смотрим, что есть в /boot
     ```
         ll /boot/
