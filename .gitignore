@@ -3,8 +3,10 @@
 
 ### Vagrant & Molecule
 .vagrant/
+*.vdi
 *.log
 *.pyc
 .molecule
 .cache
 .pytest_cache
+jacoelho.softwareraid/
