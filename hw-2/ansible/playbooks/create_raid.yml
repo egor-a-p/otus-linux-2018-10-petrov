@@ -1,0 +1,9 @@
+---
+- name: Create RAID
+  hosts: all
+  become: true
+  tasks:
+  - name: create /etc/mdadm
+    file: path=/etc/mdadm state=directory
+  - include_role:
+      name: jacoelho.softwareraid
