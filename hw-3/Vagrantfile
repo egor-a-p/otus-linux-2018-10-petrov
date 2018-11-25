@@ -1,0 +1,68 @@
+Vagrant.require_version ">=2"
+API_VERSION = "2"
+
+disks_number = 6
+disk_size = 100 #MB
+disks_dir = "#{Dir.pwd}/disks"
+ansible_mdadm = true
+
+hosts = [ { name: 'otuslinux', host_box: 'centos/7', host_ip: '192.168.11.101' }]
+
+Vagrant.configure(API_VERSION) do |config|
+    hosts.each do |host_config|
+        config.vm.define host_config[:name] do |host|
+            host.vm.hostname = host_config[:name]
+            host.vm.box = host_config[:host_box]
+            host.vm.network :private_network, ip: host_config[:host_ip]
+
+            host.vm.provider :virtualbox do |vbox|
+                vbox.customize ["modifyvm", :id, "--memory", "1024"]
+
+                initDisks = false
+
+                (1..disks_number).each do |disk|
+                    name = File.expand_path("#{disks_dir}/#{host_config[:name]}-#{disk}.vdi")
+                    unless File.exist?(name)
+                        initDisks = true
+                        vbox.customize ['createhd', '--filename', name, '--variant', 'Fixed', '--size', disk_size]    
+                    end
+                end
+
+                if initDisks
+                    vbox.customize ["storagectl", :id, "--add", "sata", "--name", "SATA" ]
+                    (1..disks_number).each do |disk|
+                        name = File.expand_path("#{disks_dir}/#{host_config[:name]}-#{disk}.vdi")
+                        vbox.customize ['storageattach', :id,  '--storagectl', 'SATA', '--port', disk, '--device', 0, '--type', 'hdd', '--medium', name]
+                    end
+                end
+            end
+        end
+
+        config.vm.provision "shell", inline: <<-SHELL
+	        mkdir -p ~root/.ssh
+            cp ~vagrant/.ssh/auth* ~root/.ssh
+            yum install -y mdadm smartmontools hdparm gdisk
+        SHELL
+
+        if ansible_mdadm
+            config.vm.provision "ansible" do |ansible|
+                ansible.playbook = "ansible/playbooks/create_raid.yml"
+                ansible.extra_vars = {
+                    software_raid_alerts_email: "email@example.com",
+                    software_raid_devices: [
+                        {
+                            device: "/dev/md0",
+                            level: 10,
+                            components: ["/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf", "/dev/sdg"],
+                            filesystem_type: "xfs",
+                            mount_point: "/mnt/volume",
+                            mount_options: "noatime,noexec,nodiratime",
+                            dump: 0,
+                            passno: 0
+                        }
+                    ]
+                }
+        end
+        end
+    end
+end
