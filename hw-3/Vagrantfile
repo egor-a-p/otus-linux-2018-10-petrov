@@ -1,68 +1,83 @@
-Vagrant.require_version ">=2"
-API_VERSION = "2"
+# -*- mode: ruby -*-
+# vim: set ft=ruby :
+home = ENV['HOME']
 
-disks_number = 6
-disk_size = 100 #MB
-disks_dir = "#{Dir.pwd}/disks"
-ansible_mdadm = true
 
-hosts = [ { name: 'otuslinux', host_box: 'centos/7', host_ip: '192.168.11.101' }]
+MACHINES = {
+  :otuslinux => {
+        :box_name => "centos/7",
+        :box_version => "1804.02",
+        :ip_addr => '192.168.11.101',
+    :disks => {
+        :sata1 => {
+            :dfile => home + '/VMDisks/lvm/sata1.vdi',
+            :size => 10240, # Megabytes
+            :port => 1
+        },
+        :sata2 => {
+            :dfile => home + '/VMDisks/lvm/sata2.vdi',
+            :size => 2048, 
+            :port => 2
+        },
+        :sata3 => {
+            :dfile => home + '/VMDisks/lvm/sata3.vdi',
+            :size => 1024, 
+            :port => 3
+        },
+        :sata4 => {
+            :dfile => home + '/VMDisks/lvm/sata4.vdi',
+            :size => 1024,
+            :port => 4
+        },
+        :sata5 => {
+            :dfile => home + '/VMDisks/lvm/sata5.vdi',
+            :size => 256, 
+            :port => 5
+        },
+        :sata6 => {
+            :dfile => home + '/VMDisks/lvm/sata6.vdi',
+            :size => 256,
+            :port => 6
+        }
+    }
+  },
+}
 
-Vagrant.configure(API_VERSION) do |config|
-    hosts.each do |host_config|
-        config.vm.define host_config[:name] do |host|
-            host.vm.hostname = host_config[:name]
-            host.vm.box = host_config[:host_box]
-            host.vm.network :private_network, ip: host_config[:host_ip]
+Vagrant.configure("2") do |config|
 
-            host.vm.provider :virtualbox do |vbox|
-                vbox.customize ["modifyvm", :id, "--memory", "1024"]
+  MACHINES.each do |boxname, boxconfig|
 
-                initDisks = false
+      config.vm.define boxname do |box|
 
-                (1..disks_number).each do |disk|
-                    name = File.expand_path("#{disks_dir}/#{host_config[:name]}-#{disk}.vdi")
-                    unless File.exist?(name)
-                        initDisks = true
-                        vbox.customize ['createhd', '--filename', name, '--variant', 'Fixed', '--size', disk_size]    
-                    end
-                end
+          box.vm.box = boxconfig[:box_name]
+          box.vm.box_version = boxconfig[:box_version]
 
-                if initDisks
-                    vbox.customize ["storagectl", :id, "--add", "sata", "--name", "SATA" ]
-                    (1..disks_number).each do |disk|
-                        name = File.expand_path("#{disks_dir}/#{host_config[:name]}-#{disk}.vdi")
-                        vbox.customize ['storageattach', :id,  '--storagectl', 'SATA', '--port', disk, '--device', 0, '--type', 'hdd', '--medium', name]
-                    end
-                end
-            end
-        end
+          box.vm.host_name = boxname.to_s
 
-        config.vm.provision "shell", inline: <<-SHELL
-	        mkdir -p ~root/.ssh
-            cp ~vagrant/.ssh/auth* ~root/.ssh
-            yum install -y mdadm smartmontools hdparm gdisk
-        SHELL
+          #box.vm.network "forwarded_port", guest: 3260, host: 3260+offset
 
-        if ansible_mdadm
-            config.vm.provision "ansible" do |ansible|
-                ansible.playbook = "ansible/playbooks/create_raid.yml"
-                ansible.extra_vars = {
-                    software_raid_alerts_email: "email@example.com",
-                    software_raid_devices: [
-                        {
-                            device: "/dev/md0",
-                            level: 10,
-                            components: ["/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf", "/dev/sdg"],
-                            filesystem_type: "xfs",
-                            mount_point: "/mnt/volume",
-                            mount_options: "noatime,noexec,nodiratime",
-                            dump: 0,
-                            passno: 0
-                        }
-                    ]
-                }
-        end
-        end
-    end
+          box.vm.network "private_network", ip: boxconfig[:ip_addr]
+
+          box.vm.provider :virtualbox do |vb|
+                  vb.customize ["modifyvm", :id, "--memory", "200"]
+          vb.customize ["storagectl", :id, "--name", "SATA", "--add", "sata" ]
+          vb.name = boxname.to_s
+
+          boxconfig[:disks].each do |dname, dconf|
+              unless File.exist?(dconf[:dfile])
+                vb.customize ['createhd', '--filename', dconf[:dfile], '--variant', 'Fixed', '--size', dconf[:size]]
+              end
+              vb.customize ['storageattach', :id,  '--storagectl', 'SATA', '--port', dconf[:port], '--device', 0, '--type', 'hdd', '--medium', dconf[:dfile]]
+
+          end
+          end
+      box.vm.provision "shell", inline: <<-SHELL
+          mkdir -p ~root/.ssh
+          cp ~vagrant/.ssh/auth* ~root/.ssh
+          yum install -y vim psmisc xfsdump
+      SHELL
+
+      end
+  end
 end
+
