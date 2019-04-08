@@ -2,6 +2,7 @@
 *.retry
 
 ### Vagrant & Molecule
+.vscode/
 .vagrant/
 *.vdi
 *.log
