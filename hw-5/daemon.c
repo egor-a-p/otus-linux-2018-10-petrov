@@ -7,21 +7,22 @@
 #include <syslog.h>
 
 void signal_handler(int signalno){
-	if (SIGTERM == signalno) {
-		syslog(LOG_WARNING, "Catch SIGTERM");
-		exit(0);
-	}
+    if (SIGTERM == signalno) {
+        syslog(LOG_WARNING, "Catch SIGTERM");
+        exit(0);
+    }
 }
 
 int main(){
-	// создаем потомка
-	int pid = fork();
+    // создаем потомка
+    int pid = fork();
 
-	if (!pid){ // если это потомок
-		//Добавляем обработчик согнала SIGTERM
-		signal(SIGTERM, signal_handler);
+    if (!pid){ // если это потомок
+    
+        //Добавляем обработчик согнала SIGTERM
+        signal(SIGTERM, signal_handler);
 
-		// Демонизируем процесс:
+        // Демонизируем процесс:
         // данный код уже выполняется в процессе потомка
         // разрешаем выставлять все биты прав на создаваемые файлы, 
         // иначе у нас могут быть проблемы с правами доступа
@@ -36,14 +37,14 @@ int main(){
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
         
-		// Работа демона =)
-		while(1){
-			sleep(1);
-		}
+        // Работа демона =)
+        while(1){
+            sleep(1);
+        }
 
         return 0;
     } else {// если это родитель
-		printf("Init daemon child with pid: %d\n", pid);
+        printf("Init daemon child with pid: %d\n", pid);
         // завершим процес, т.к. основную свою задачу (запуск демона) мы выполнили
         return 0;
     }
